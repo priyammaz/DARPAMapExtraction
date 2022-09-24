@@ -26,8 +26,9 @@ class MAPLoader(Dataset):
         key, segmentation = self.metadata_df.iloc[index, :]
         full_map, legend_label = self._grab_map_legend(key, segmentation)
         legend_name = segmentation[:-4]
-
-        return full_map, legend_label, legend_name
+        segmentation_map = np.array(Image.open(os.path.join(PATH_TO_DATA, key + "_" + segmentation)))
+        
+        return full_map, segmentation_map, legend_label, legend_name
         
     
     def _grab_map_legend(self, key, segmentation):
