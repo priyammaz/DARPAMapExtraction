@@ -8,9 +8,6 @@ from torch.utils.data import Dataset, DataLoader
 
 Image.MAX_IMAGE_PIXELS = None
 
-PATH_TO_DATA = "/home/shared/DARPA/training"
-
-
 class MAPLoader(Dataset):
     def __init__(self, PATH_TO_DATA):
         self.PATH = PATH_TO_DATA
@@ -26,7 +23,7 @@ class MAPLoader(Dataset):
         key, segmentation = self.metadata_df.iloc[index, :]
         full_map, legend_label = self._grab_map_legend(key, segmentation)
         legend_name = segmentation[:-4]
-        segmentation_map = np.array(Image.open(os.path.join(PATH_TO_DATA, key + "_" + segmentation)))
+        segmentation_map = np.array(Image.open(os.path.join(self.PATH, key + "_" + segmentation)))
         
         return full_map, segmentation_map, legend_label, legend_name
         
@@ -39,7 +36,7 @@ class MAPLoader(Dataset):
         for i in meta_json["shapes"]:
             if i["label"] == segmentation[:-4]:
                 points = i["points"]
-        full_map = np.array(Image.open(os.path.join(PATH_TO_DATA, key+".tif")))
+        full_map = np.array(Image.open(os.path.join(self.PATH, key+".tif")))
             
         ### CROP OUT LABEL ###
         ix1 = ceil(points[0][0])
@@ -66,5 +63,6 @@ class MAPLoader(Dataset):
         self.metadata_df = pd.DataFrame(metadatas)
 
 if __name__ == "__main__":
+    PATH_TO_DATA = "/home/shared/DARPA/training"
     dataset = MAPLoader(PATH_TO_DATA)
     dataloader = DataLoader(dataset, shuffle=True, num_workers=2, batch_size=16)
