@@ -68,7 +68,7 @@ class GenMapPatches:
             self._grab_unique(os.path.join(self.PATH, directory))
 
             for idx, key in enumerate(self.metadata):
-                print(f"Patching {idx}/{len(self.metadata)}: {key})
+                print(f"Patching {idx}/{len(self.metadata)}: {key}")
                 path_to_map = os.path.join(self.PATH, directory, key+".tif")
                 path_to_json = os.path.join(self.PATH, directory, key+".json")
 
