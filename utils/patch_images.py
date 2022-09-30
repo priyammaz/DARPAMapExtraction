@@ -11,7 +11,6 @@ from torch.utils.data import Dataset, DataLoader
 import cv2
 from collections import Counter
 
-
 Image.MAX_IMAGE_PIXELS = None
 
 
@@ -68,7 +67,8 @@ class GenMapPatches:
             print(f"Parsing {directory} data")
             self._grab_unique(os.path.join(self.PATH, directory))
 
-            for key in tqdm(self.metadata, total=len(self.metadata), leave=True):
+            for idx, key in enumerate(self.metadata):
+                print(f"Patching {idx}/{len(self.metadata)}: {key})
                 path_to_map = os.path.join(self.PATH, directory, key+".tif")
                 path_to_json = os.path.join(self.PATH, directory, key+".json")
 
@@ -77,7 +77,7 @@ class GenMapPatches:
 
                 with open(path_to_json, "r") as f:
                     metadata = json.load(f)["shapes"]
-                    for meta in tqdm(metadata, total=len(metadata), leave=False):
+                    for meta in metadata:
                         tif_name = key+"_"+meta["label"]+".tif"
                         path_to_tiff = os.path.join(self.PATH, directory, tif_name)
                         tif = np.array(Image.open(path_to_tiff))
