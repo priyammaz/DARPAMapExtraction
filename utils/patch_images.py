@@ -20,13 +20,17 @@ class GenMapPatches:
                  path_to_store,
                  patch_dim=256, 
                  patch_overlap=0,
-                 legend_dim=256):
+                 legend_dim=256,
+                 skip_train=None, 
+                 skip_val=None):
         
         self.PATH = path_to_data
         self.PATH_TO_STORE = path_to_store
         self.patch_dim = patch_dim
         self.patch_overlap = patch_overlap
         self.legend_dim = legend_dim
+        self.skip_train = skip_train
+        self.skip_val = skip_val
         
         self._make_dir()
         self._gen_patches()
@@ -77,59 +81,55 @@ class GenMapPatches:
 
                 with open(path_to_json, "r") as f:
                     metadata = json.load(f)["shapes"]
-                    for meta in metadata:
+                    for idx, meta in enumerate(metadata):
+                        
+                        print(f"{idx}/{len(metadata)}", end='\r')
                         tif_name = key+"_"+meta["label"]+".tif"
                         path_to_tiff = os.path.join(self.PATH, directory, tif_name)
                         tif = np.array(Image.open(path_to_tiff))
                         tif_patches = self._patchify_image(tif, rgb=False)
 
                         ### GRAB LEGEND LABEL ###
-                        legend_label = self._grab_map_legend(map_im, meta["points"])
+                        try:
+                        ### IF LEGEND LABEL ISNT EMPTY ###
+                            legend_label = self._grab_map_legend(map_im, meta["points"])
 
-                        ## GRAB PATCHES WITH SEGMENTATION INFORMATION ###
-                        assert(tif_patches.shape == map_patches.shape[:-1])
-                        seg_idx = []
-                        for idx, patch in enumerate(tif_patches):
-                            if patch.sum() > 0:
-                                idx_map = Image.fromarray(map_patches[idx])
-                                idx_seg = Image.fromarray(tif_patches[idx] * 255)
-                                idx_label = Image.fromarray(legend_label)
+                            ## GRAB PATCHES WITH SEGMENTATION INFORMATION ###
+                            assert(tif_patches.shape == map_patches.shape[:-1])
+                            seg_idx = []
+                            for idx, patch in enumerate(tif_patches):
+                                if patch.sum() > 0: # If any segmentation information exists in patch
+                                    idx_map = Image.fromarray(map_patches[idx])
+                                    idx_seg = Image.fromarray(tif_patches[idx] * 255)
+                                    idx_label = Image.fromarray(legend_label)
+
+                                    label_name = meta["label"]
+                                    filename = f"{key}_{label_name}_{idx}"
+
+                                    map_save_path = os.path.join(self.folder_directories[directory]["map_patches"], f"{filename}.png")
+                                    seg_save_path = os.path.join(self.folder_directories[directory]["seg_patches"], f"{filename}.png")
+                                    label_save_path = os.path.join(self.folder_directories[directory]["labels"], f"{filename}.png")
+
+                                    idx_map.save(map_save_path, format="png")
+                                    idx_seg.save(seg_save_path, format="png")
+                                    idx_label.save(label_save_path, format="png")
+
+                        except Exception as e:
+                            print(f"[LOGGING]: Key:{key}, Meta:{label_name} Label is Broken")
                                 
-                                
-                                label_name = meta["label"]
-                                filename = f"{key}_{label_name}_{idx}"
-                                
-                                map_save_path = self.folder_directories[directory]["map_patches"]
-                                seg_save_path = self.folder_directories[directory]["seg_patches"]
-                                label_save_path = self.folder_directories[directory]["labels"]
-                                
-                                idx_map.save(f"{map_save_path}/{filename}.png", format="png")
-                                idx_seg.save(f"{seg_save_path}/{filename}.png", format="png")
-                                idx_label.save(f"{label_save_path}/{filename}.png", format="png")
     
             
     def _grab_map_legend(self, map_image, points):
-        ### CROP OUT LABEL ###
-        ix1 = ceil(points[0][0])
-        ix2 = floor(points[1][0])
-        
-        ### CHECK LEFT X IS SMALLER THAN RIGHT X ###
-        if ix1 > ix2:
-            ix1, ix2 = ix2, ix1
-
-        iy1 = ceil(points[0][1])
-        iy2 = floor(points[1][1])
-        
-        ### CHECK TOP Y SMALLER THAN BOTTOM Y ###
-        if iy1 > iy2:
-            iy1, iy2 = iy2, iy1
+        points = np.array(points)
+        ix1, iy1 = list(points.min(axis=0).astype(int))
+        ix2, iy2 = list(points.max(axis=0).astype(int))
         
         legend_label = map_image[iy1:iy2, ix1:ix2, :]
 
         legend_label = cv2.resize(legend_label, 
                                   dsize=(self.legend_dim , self.legend_dim ),
                                   interpolation=cv2.INTER_LINEAR)
-
+        
         return legend_label
     
     def _patchify_image(self, map_image, rgb=False):
@@ -149,7 +149,16 @@ class GenMapPatches:
         all_files = sorted(os.listdir(directory))
         self.metadata = [file[:-5] for file in all_files if ".json" in file]
 
-
+        if "training" in directory and self.skip_train is not None:
+            print(f"Skipping Until Map {self.skip_train}")
+            start_idx = self.metadata.index(self.skip_train)
+            self.metadata = self.metadata[start_idx:]
+           
+        if "validation" in directory and self.skip_val is not None:
+            print(f"Skipping Until Map {self.skip_val}")
+            start_idx = self.metadata.index(self.skip_train)
+            self.metadata = self.metadata[start_idx:]
+            
 if __name__ == "__main__":
     PATH_TO_DATA = "/home/shared/DARPA"
     PATH_TO_STORE = os.path.join(PATH_TO_DATA, "patched_data")
