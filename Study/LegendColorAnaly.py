@@ -39,7 +39,9 @@ for name in allNames:
         
         wlp = GLP.getLegendPatch(img, wli)
         
-        pxyz = [tuple(j) for i in wlp for j in i]
+        #pxyz = [tuple(j) for i in wlp for j in i]
+        wlp_flat = np.reshape(wlp, (wlp.shape[0]*wlp.shape[1], 3))
+        pxyz = wlp_flat
         prgba = [(i[0]/255,i[1]/255, i[2]/255, 1.0) for i in pxyz]
         xyzp = list(zip(*pxyz))
         
