@@ -209,12 +209,15 @@ def create_synthetic_training_data(patchDir, outputDir, legendDir, patchCount, g
         for p in np.random.rand(glyph_count, 2):
             class_num = np.random.randint(len(label_keys))
             label = labels[label_keys[class_num]]
-            
-            annotations += ('{} {:.6f} {:.6f} {:.6f} {:.6f}\n'.format(class_num, p[0], p[1], label.shape[0]/patch.shape[0], label.shape[1]/patch.shape[1]))
-            
-            x = clamp(floor(p[0]*patch.shape[0]), 0, patch.shape[0]-label.shape[0])
-            y = clamp(floor(p[1]*patch.shape[1]), 0, patch.shape[1]-label.shape[1])
-            patch = place_glyph(patch, label, x, y)
+
+            x = clamp(floor(p[0]*patch.shape[0]), ceil(label.shape[0]/2), floor(patch.shape[0]-label.shape[0]/2))
+            y = clamp(floor(p[1]*patch.shape[1]), ceil(label.shape[1]/2), floor(patch.shape[1]-label.shape[1]/2))
+
+            tl_x = x - int(floor(label.shape[0]/2))
+            tl_y = y - int(floor(label.shape[1]/2))
+            #print('{},{} tl {},{}'.format(x,y,tl_x,tl_y))
+            patch = place_glyph(patch, label, tl_x, tl_y)
+            annotations += ('{} {:.6f} {:.6f} {:.6f} {:.6f}\n'.format(class_num, y/patch.shape[1], x/patch.shape[0], label.shape[1]/patch.shape[1], label.shape[0]/patch.shape[0]))
 
         # Save patch and annotations
         patch_filepath = os.path.join(outputDir, 'images', 'synpatch_{}.tif'.format(i))
@@ -224,17 +227,16 @@ def create_synthetic_training_data(patchDir, outputDir, legendDir, patchCount, g
             fh.write(annotations)
 
 def main():
-    
-    sourceDir = 'data/training'
-    legendDir = 'data/legends'
+    sourceDir = 'data/validation'
+    legendDir = 'data/val_legends'
     patchDir = 'data/patchs'
-    synDataDir = 'data/synthetic'
+    synDataDir = 'data/val_synth'
 
     patchDims = (512, 512, 3)
     patchOverlap = 64
     contentThreshold = 0.9
 
-    sythPatchsToMake = 1000
+    sythPatchsToMake = 9
 
     if not os.path.exists(legendDir):
         os.makedirs(legendDir)
@@ -250,20 +252,23 @@ def main():
             Patch Size: {}\n \
             Patch Overlap {}'.format(sourceDir, synDataDir, sythPatchsToMake, patchDims, patchOverlap))
 
-    print('Getting valid background patchs from training set')
+    #print('Getting valid background patchs from training set')
     # Generate blank backgrounds for synthethic patchs
-    patch_map_directory(sourceDir, patchDir, patchDims, patchOverlap, contentThreshold, True)
+    #patch_map_directory(sourceDir, patchDir, patchDims, patchOverlap, contentThreshold, True)
     
     print('Creating label Dictionary')
     # Save legends
     pt_legends = build_legend_dictionary(sourceDir)
     for label in pt_legends:
-        cv2.imwrite(os.path.join(legendDir, '{}.tif'.format(label)),pt_legends[label])
+        try:
+            cv2.imwrite(os.path.join(legendDir, '{}.tif'.format(label)),pt_legends[label])
+        except:
+            print('Error trying to save legend: {}'.format(label))
+            continue
     
     print('Creating synthetic patchs')
     # Build sythethic dataset from patchs and legends
     create_synthetic_training_data(patchDir, synDataDir, legendDir, sythPatchsToMake)
-
 
 if __name__ == '__main__':
     main()
