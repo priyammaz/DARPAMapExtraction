@@ -1,4 +1,4 @@
-# DARPA_Map_Feature_Extraction
+# DARPA Map Feature Extraction
 This is the repo for DARPA AI competition of map feature extraction
 
 ## Background
